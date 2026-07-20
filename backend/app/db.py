@@ -143,6 +143,23 @@ def get_project(project_id: str) -> dict | None:
     return project
 
 
+def reconcile_stale_recordings() -> int:
+    """Called once at process startup. The in-memory session_manager always
+    boots with no active recording, so any project/session left marked
+    'active'/'running' in the DB is stale -- the previous process died
+    (crash, forced restart) before it could call update_project_status via
+    the normal /stop endpoint. Without this, the dashboard would show a
+    "Recording" badge on a project forever with nothing actually capturing
+    it. Returns how many projects were reconciled, for a startup log line."""
+    with connect() as conn:
+        cur = conn.execute("UPDATE projects SET status = 'stopped' WHERE status = 'active'")
+        conn.execute(
+            "UPDATE recording_sessions SET status = 'stopped', ended_at = ? WHERE status = 'running'",
+            (time.time(),),
+        )
+        return cur.rowcount
+
+
 def update_project_status(project_id: str, status: str) -> None:
     with connect() as conn:
         conn.execute(

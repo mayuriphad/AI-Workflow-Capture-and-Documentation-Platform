@@ -39,7 +39,7 @@ export default function SessionPage() {
     project, status, pendingSteps, setActiveProjectId, refresh,
     isDictating, startDictation, stopDictation,
     isExtractingKeyPoints, startKeyPointsCapture, stopKeyPointsCapture,
-    dictationError,
+    dictationError, recording, startRecording, stopRecording, actionBusy, actionError,
   } = useSession();
   const { showToast } = useToast();
 
@@ -56,6 +56,24 @@ export default function SessionPage() {
   useEffect(() => {
     if (dictationError) showToast("error", dictationError);
   }, [dictationError, showToast]);
+
+  useEffect(() => {
+    if (actionError) showToast("error", actionError);
+  }, [actionError, showToast]);
+
+  const handleToggleRecording = async () => {
+    try {
+      if (recording) {
+        await stopRecording();
+        showToast("info", "Recording stopped");
+      } else {
+        await startRecording();
+        showToast("success", "Recording resumed");
+      }
+    } catch {
+      // actionError effect above already surfaces this
+    }
+  };
 
   useEffect(() => {
     setActiveProjectId(id);
@@ -143,6 +161,9 @@ export default function SessionPage() {
         compact={compact}
         onToggleCompact={() => setCompact((c) => !c)}
         onOpenPending={setRedactStepId}
+        recording={recording}
+        onToggleRecording={handleToggleRecording}
+        recordingBusy={actionBusy}
       />
 
       {/* Action Toolbar */}

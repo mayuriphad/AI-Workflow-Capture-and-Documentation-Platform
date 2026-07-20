@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import PUBLISHED_DIR, SCREENSHOTS_DIR
-from app.db import init_db
+from app.db import init_db, reconcile_stale_recordings
 from app.logging_config import configure_logging
 from app.routers import analytics, export, projects, publish, review, sessions, settings, steps, versions
 from app.services.word_automation import word
@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    reconciled = reconcile_stale_recordings()
+    if reconciled:
+        logger.warning("Reconciled %d project(s) left marked 'active' by a previous process", reconciled)
     word.start()
     try:
         yield
