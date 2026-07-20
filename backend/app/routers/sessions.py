@@ -1,12 +1,16 @@
 import asyncio
+import io
 import tempfile
+import time
 import uuid
+import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app import db
-from app.config import PROJECTS_DIR
+from app.config import AUDIO_DIR, PROJECTS_DIR
 from app.schemas import ManualNoteRequest, ProjectCreate
 from app.services import ai_layer
 from app.services.recording_session import session_manager
@@ -15,6 +19,18 @@ from app.services.transcription import transcribe_audio
 from app.services.word_automation import word
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+def _persist_audio(project_id: str, tmp_path: str, suffix: str) -> str:
+    """Moves a transcribed voice clip out of the tempfile it was recorded to
+    and into permanent per-project storage, so there's a real file behind
+    "export voice to audio" instead of the temp clip that used to be
+    deleted right after transcription."""
+    dest_dir = AUDIO_DIR / project_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}{suffix}"
+    Path(tmp_path).replace(dest)
+    return str(dest)
 
 
 @router.post("/start")
@@ -71,14 +87,17 @@ async def voice_note(project_id: str, file: UploadFile = File(...)):
 
     try:
         text = await asyncio.to_thread(transcribe_audio, tmp_path)
-    finally:
+    except Exception:
         Path(tmp_path).unlink(missing_ok=True)
+        raise
+    audio_path = _persist_audio(project_id, tmp_path, suffix)
 
     last_step = db.get_last_inserted_step(project_id)
     bookmark = last_step["word_bookmark"] if last_step else None
     await word.append_voice_note(bookmark, text)
     step_id = db.add_step(
-        project_id, "voice_note", instruction=text, review_status="auto_inserted", word_bookmark=bookmark
+        project_id, "voice_note", instruction=text, audio_path=audio_path,
+        review_status="auto_inserted", word_bookmark=bookmark,
     )
     return {"step_id": step_id, "text": text}
 
@@ -101,8 +120,10 @@ async def voice_note_key_points(project_id: str, file: UploadFile = File(...)):
 
     try:
         transcript = await asyncio.to_thread(transcribe_audio, tmp_path)
-    finally:
+    except Exception:
         Path(tmp_path).unlink(missing_ok=True)
+        raise
+    audio_path = _persist_audio(project_id, tmp_path, suffix)
 
     existing_steps = [
         {"id": s["id"], "instruction": s["instruction"]}
@@ -128,12 +149,41 @@ async def voice_note_key_points(project_id: str, file: UploadFile = File(...)):
 
         await word.append_voice_note(bookmark, point["text"])
         step_id = db.add_step(
-            project_id, "voice_note", instruction=point["text"],
+            project_id, "voice_note", instruction=point["text"], audio_path=audio_path,
             review_status="auto_inserted", word_bookmark=bookmark,
         )
         inserted.append({"step_id": step_id, "text": point["text"], "attached_to_step_id": target_id})
 
     return {"transcript": transcript, "key_points": inserted}
+
+
+@router.get("/{project_id}/voice-notes/export")
+async def export_voice_notes(project_id: str):
+    """Bundles every persisted voice-note clip for this project into a zip
+    download -- the real audio behind the toolbar's "Export Voice to Audio"
+    button, distinct from the transcript text already in the SOP."""
+    project = db.get_project(project_id)
+    if project is None:
+        raise HTTPException(404, "Project not found")
+
+    paths = db.list_audio_paths(project_id)
+    if not paths:
+        raise HTTPException(404, "No voice recordings have been captured for this project yet")
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for i, path in enumerate(paths, start=1):
+            p = Path(path)
+            if p.exists():
+                zf.write(p, arcname=f"{i:02d}_{p.name}")
+    buffer.seek(0)
+
+    filename = f"{project['title'].replace(' ', '_')}_voice_notes.zip"
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/{project_id}/manual-note")

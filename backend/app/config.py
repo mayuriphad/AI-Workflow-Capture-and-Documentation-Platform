@@ -13,13 +13,14 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 STORAGE_ROOT = Path(__file__).resolve().parent.parent / "storage"
 SCREENSHOTS_DIR = STORAGE_ROOT / "screenshots"  # raw + redacted captures, served at /screenshots
+AUDIO_DIR = STORAGE_ROOT / "audio"  # persisted voice-note clips, so "export voice to audio" has something real to bundle
 EXPORTS_DIR = STORAGE_ROOT / "exports"
 PROJECTS_DIR = STORAGE_ROOT / "projects"  # the live .docx each project's Word session has open
 VERSIONS_DIR = STORAGE_ROOT / "versions"  # timestamped snapshots of each project's .docx
 PUBLISHED_DIR = STORAGE_ROOT / "published"  # local "SOP Library" -- always-available publish target
 DB_PATH = STORAGE_ROOT / "sop.db"
 
-for _dir in (SCREENSHOTS_DIR, EXPORTS_DIR, PROJECTS_DIR, VERSIONS_DIR, PUBLISHED_DIR):
+for _dir in (SCREENSHOTS_DIR, AUDIO_DIR, EXPORTS_DIR, PROJECTS_DIR, VERSIONS_DIR, PUBLISHED_DIR):
     _dir.mkdir(parents=True, exist_ok=True)
 
 # faster-whisper model size. "base" is a good speed/accuracy default for

@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS steps (
     instruction TEXT,
     screenshot_raw_path TEXT,
     screenshot_final_path TEXT,
+    audio_path TEXT,
     sensitive_flag INTEGER NOT NULL DEFAULT 0,
     redaction_boxes TEXT,
     review_status TEXT NOT NULL DEFAULT 'auto_inserted'
@@ -79,6 +80,16 @@ def init_db() -> None:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     with connect() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive, idempotent column migrations for DBs created before a given
+    column existed -- CREATE TABLE IF NOT EXISTS above is a no-op against an
+    already-existing table, so new columns need an explicit ALTER here."""
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(steps)")}
+    if "audio_path" not in existing:
+        conn.execute("ALTER TABLE steps ADD COLUMN audio_path TEXT")
 
 
 @contextmanager
@@ -195,6 +206,7 @@ def add_step(
     instruction: str | None = None,
     screenshot_raw_path: str | None = None,
     screenshot_final_path: str | None = None,
+    audio_path: str | None = None,
     sensitive_flag: bool = False,
     redaction_boxes: list[dict] | None = None,
     review_status: str = "auto_inserted",
@@ -208,12 +220,12 @@ def add_step(
         ).fetchone()
         conn.execute(
             """INSERT INTO steps (id, project_id, session_id, position, kind, instruction,
-                                   screenshot_raw_path, screenshot_final_path, sensitive_flag,
+                                   screenshot_raw_path, screenshot_final_path, audio_path, sensitive_flag,
                                    redaction_boxes, review_status, word_bookmark, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 step_id, project_id, session_id, max_pos + 1, kind, instruction,
-                screenshot_raw_path, screenshot_final_path, int(sensitive_flag),
+                screenshot_raw_path, screenshot_final_path, audio_path, int(sensitive_flag),
                 json.dumps(redaction_boxes) if redaction_boxes else None,
                 review_status, word_bookmark, time.time(),
             ),
@@ -262,6 +274,19 @@ def resolve_step(
     values.append(step_id)
     with connect() as conn:
         conn.execute(f"UPDATE steps SET {', '.join(fields)} WHERE id = ?", values)
+
+
+def list_audio_paths(project_id: str) -> list[str]:
+    """Distinct persisted voice-note audio files for a project, in capture
+    order -- used to bundle a project's "export voice to audio" download.
+    A single recording can back multiple key-point steps, so this dedupes."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT audio_path FROM steps WHERE project_id = ? AND audio_path IS NOT NULL "
+            "ORDER BY position ASC",
+            (project_id,),
+        ).fetchall()
+    return [r["audio_path"] for r in rows]
 
 
 def get_last_inserted_step(project_id: str) -> dict | None:

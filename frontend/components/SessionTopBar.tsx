@@ -113,6 +113,7 @@ function useOutsideClose(onClose: () => void) {
 interface Props {
   project: Project;
   steps: Step[];
+  pendingSteps: Step[];
   activeIndex: number;
   onJump: (index: number) => void;
   autoPlaying: boolean;
@@ -121,16 +122,19 @@ interface Props {
   processing: boolean;
   compact: boolean;
   onToggleCompact: () => void;
+  onOpenPending: (stepId: string) => void;
 }
 
 export default function SessionTopBar({
-  project, steps, activeIndex, onJump, autoPlaying, onToggleAutoPlay, autoAdvanceSec, processing, compact, onToggleCompact,
+  project, steps, pendingSteps, activeIndex, onJump, autoPlaying, onToggleAutoPlay, autoAdvanceSec, processing, compact, onToggleCompact, onOpenPending,
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(false);
   const infoRef = useOutsideClose(() => setInfoOpen(false));
   const helpRef = useOutsideClose(() => setHelpOpen(false));
+  const pendingRef = useOutsideClose(() => setPendingOpen(false));
 
   const activeStep = steps[activeIndex];
   const activeLabel = activeStep
@@ -147,9 +151,34 @@ export default function SessionTopBar({
         <ToolTabsNav />
 
         <div className="flex h-full shrink-0 items-center gap-3.5">
-          <button className="text-gray-300 hover:text-white transition-colors" title="Notes">
-            <IconFlag />
-          </button>
+          <div className="relative" ref={pendingRef}>
+            <button onClick={() => setPendingOpen((o) => !o)} className="relative text-gray-300 hover:text-white transition-colors" title="Pending redaction review">
+              <IconFlag />
+              {pendingSteps.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                  {pendingSteps.length}
+                </span>
+              )}
+            </button>
+            <DropdownPanel open={pendingOpen} className="absolute right-0 top-7 w-72 rounded bg-[#2D2D2D] border border-gray-700 shadow-xl overflow-hidden z-50 text-xs">
+              <div className="px-3.5 py-2.5 border-b border-gray-700 text-white font-semibold">
+                {pendingSteps.length === 0 ? "Nothing pending" : `${pendingSteps.length} waiting for redaction review`}
+              </div>
+              {pendingSteps.length > 0 && (
+                <div className="max-h-56 overflow-y-auto">
+                  {pendingSteps.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => { onOpenPending(s.id); setPendingOpen(false); }}
+                      className="flex w-full items-center px-3.5 py-2 text-left text-gray-300 hover:bg-white/5 hover:text-white transition-colors truncate"
+                    >
+                      {s.instruction || "Untitled step"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </DropdownPanel>
+          </div>
           <div className="relative" ref={infoRef}>
             <button onClick={() => setInfoOpen((o) => !o)} className="text-gray-300 hover:text-white transition-colors" title="Info">
               <IconInfo />

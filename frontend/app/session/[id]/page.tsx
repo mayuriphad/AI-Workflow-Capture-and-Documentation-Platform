@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { api } from "@/lib/api";
 import { useSession } from "@/lib/SessionContext";
+import { useToast } from "@/lib/ToastContext";
 import PendingReviewQueue from "@/components/PendingReviewQueue";
 import Filmstrip from "@/components/Filmstrip";
 import StepCard from "@/components/StepCard";
@@ -33,7 +35,13 @@ function LoadingSkeleton() {
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
-  const { project, status, pendingSteps, setActiveProjectId, refresh } = useSession();
+  const {
+    project, status, pendingSteps, setActiveProjectId, refresh,
+    isDictating, startDictation, stopDictation,
+    isExtractingKeyPoints, startKeyPointsCapture, stopKeyPointsCapture,
+    dictationError,
+  } = useSession();
+  const { showToast } = useToast();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [autoPlaying, setAutoPlaying] = useState(false);
@@ -41,6 +49,13 @@ export default function SessionPage() {
   const [captionsOn, setCaptionsOn] = useState(true);
   const [compact, setCompact] = useState(false);
   const [moreImagesOpen, setMoreImagesOpen] = useState(false);
+  const [redactStepId, setRedactStepId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const transcriptInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (dictationError) showToast("error", dictationError);
+  }, [dictationError, showToast]);
 
   useEffect(() => {
     setActiveProjectId(id);
@@ -48,6 +63,7 @@ export default function SessionPage() {
   }, [id, setActiveProjectId]);
 
   const visibleSteps = (project?.steps ?? []).filter((s) => s.review_status !== "rejected");
+  const hasVoiceAudio = (project?.steps ?? []).some((s) => !!s.audio_path);
 
   // Keep activeIndex in range as steps get added/removed.
   useEffect(() => {
@@ -81,6 +97,33 @@ export default function SessionPage() {
     if (step) document.getElementById(`step-${step.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const handleStartRedaction = () => {
+    if (pendingSteps.length === 0) {
+      showToast("info", "Nothing needs redaction right now.");
+      return;
+    }
+    setRedactStepId(pendingSteps[0].id);
+  };
+
+  const handleImportTranscription = async (file: File) => {
+    const text = await file.text();
+    if (!text.trim()) {
+      showToast("error", "That file is empty.");
+      return;
+    }
+    if (!project) return;
+    setImporting(true);
+    try {
+      await api.submitManualNote(project.id, text.trim());
+      showToast("success", "Transcription imported as a new section");
+      refresh();
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Failed to import transcription");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   if (!project) {
     return <LoadingSkeleton />;
   }
@@ -90,6 +133,7 @@ export default function SessionPage() {
       <SessionTopBar
         project={project}
         steps={visibleSteps}
+        pendingSteps={pendingSteps}
         activeIndex={activeIndex}
         onJump={jumpTo}
         autoPlaying={autoPlaying}
@@ -98,6 +142,7 @@ export default function SessionPage() {
         processing={!!status?.processing}
         compact={compact}
         onToggleCompact={() => setCompact((c) => !c)}
+        onOpenPending={setRedactStepId}
       />
 
       {/* Action Toolbar */}
@@ -117,18 +162,78 @@ export default function SessionPage() {
           </div>
 
           <div className="flex items-center">
-            <button className="border-y border-l border-gray-300 bg-red-50 text-red-500 px-3 py-1.5 rounded-l">Voice to Text Pending</button>
-            <button className="border border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70">Listen Voice</button>
-            <button className="border-y border-gray-300 px-3 py-1.5 bg-gray-100 text-ink font-medium">Export Voice to Audio</button>
-            <button className="border border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70">Start Voice Text</button>
-            <button className="border-y border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70">Import Transcription</button>
-            <button className="border border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70 rounded-r">Start Redaction</button>
+            <span
+              className={`border-y border-l px-3 py-1.5 rounded-l transition-colors ${
+                isDictating ? "border-red-300 bg-red-50 text-red-500" : "border-gray-300 bg-gray-50 text-ink/40"
+              }`}
+              title={isDictating ? "Recording — transcription pending" : "No dictation in progress"}
+            >
+              Voice to Text Pending
+            </span>
+            <button
+              onClick={() => (isExtractingKeyPoints ? stopKeyPointsCapture() : startKeyPointsCapture())}
+              disabled={!project || isDictating}
+              title="Record a longer voice memo -- AI breaks it into key points and places each under the right step"
+              className={`border px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                isExtractingKeyPoints ? "bg-accent text-white border-accent" : "border-gray-300 hover:bg-gray-100 text-ink/70"
+              }`}
+            >
+              {isExtractingKeyPoints ? "Stop & Extract" : "Listen Voice"}
+            </button>
+            <button
+              onClick={() => window.open(api.voiceNotesExportUrl(project.id), "_blank")}
+              disabled={!hasVoiceAudio}
+              title={hasVoiceAudio ? "Download every recorded voice clip for this session as a .zip" : "No voice recordings captured yet"}
+              className="border-y border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            >
+              Export Voice to Audio
+            </button>
+            <button
+              onClick={() => (isDictating ? stopDictation() : startDictation())}
+              disabled={!project || isExtractingKeyPoints}
+              title="Quick note, attached under the last step"
+              className={`border px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                isDictating ? "bg-accent text-white border-accent" : "border-gray-300 hover:bg-gray-100 text-ink/70"
+              }`}
+            >
+              {isDictating ? "Stop Voice Text" : "Start Voice Text"}
+            </button>
+            <button
+              onClick={() => transcriptInputRef.current?.click()}
+              disabled={importing}
+              title="Import a .txt transcription and add it as a new section"
+              className="border-y border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70 disabled:opacity-40"
+            >
+              {importing ? "Importing…" : "Import Transcription"}
+            </button>
+            <input
+              ref={transcriptInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImportTranscription(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={handleStartRedaction}
+              className="border border-gray-300 px-3 py-1.5 hover:bg-gray-100 text-ink/70 rounded-r"
+            >
+              Start Redaction{pendingSteps.length > 0 ? ` (${pendingSteps.length})` : ""}
+            </button>
           </div>
         </div>
       )}
 
       <AIProcessingIndicator active={!!status?.processing} />
-      <PendingReviewQueue pending={pendingSteps} onChange={refresh} />
+      <PendingReviewQueue
+        pending={pendingSteps}
+        onChange={refresh}
+        openStepId={redactStepId}
+        onOpenStepIdChange={setRedactStepId}
+      />
 
       {/* Main Content Layout */}
       <div className="flex flex-1 min-h-0">

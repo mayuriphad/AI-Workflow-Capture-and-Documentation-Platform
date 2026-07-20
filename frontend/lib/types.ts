@@ -19,6 +19,7 @@ export interface Step {
   instruction: string | null;
   screenshot_raw_path: string | null;
   screenshot_final_path: string | null;
+  audio_path: string | null;
   sensitive_flag: number;
   redaction_boxes: RedactionBox[];
   review_status: ReviewStatus;

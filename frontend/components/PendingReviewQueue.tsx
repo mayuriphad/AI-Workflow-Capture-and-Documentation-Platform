@@ -10,10 +10,17 @@ const RedactionOverlay = dynamic(() => import("./RedactionOverlay"), { ssr: fals
 interface Props {
   pending: Step[];
   onChange: () => void;
+  // Uncontrolled by default; pass these when an outside trigger (the
+  // toolbar's "Start Redaction" button) needs to open a specific step's
+  // review overlay directly instead of the user clicking "Review" here.
+  openStepId?: string | null;
+  onOpenStepIdChange?: (id: string | null) => void;
 }
 
-export default function PendingReviewQueue({ pending, onChange }: Props) {
-  const [openStepId, setOpenStepId] = useState<string | null>(null);
+export default function PendingReviewQueue({ pending, onChange, openStepId: controlledOpenStepId, onOpenStepIdChange }: Props) {
+  const [internalOpenStepId, setInternalOpenStepId] = useState<string | null>(null);
+  const openStepId = controlledOpenStepId !== undefined ? controlledOpenStepId : internalOpenStepId;
+  const setOpenStepId = onOpenStepIdChange ?? setInternalOpenStepId;
 
   if (pending.length === 0) return null;
 

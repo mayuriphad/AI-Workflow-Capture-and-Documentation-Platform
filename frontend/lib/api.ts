@@ -68,6 +68,8 @@ export const api = {
       target_step_id: targetStepId ?? null,
     }),
 
+  voiceNotesExportUrl: (projectId: string) => `${API_BASE}/sessions/${projectId}/voice-notes/export`,
+
   extractKeyPoints: (projectId: string, blob: Blob): Promise<KeyPointsResult> => {
     const form = new FormData();
     form.append("file", blob, "clip.webm");
