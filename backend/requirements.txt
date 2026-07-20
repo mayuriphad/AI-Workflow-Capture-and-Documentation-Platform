@@ -1,0 +1,29 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+pydantic==2.9.2
+
+# Voice-to-text
+faster-whisper==1.0.3
+
+# Redaction apply step (blackbox/blur). Box detection + sensitive-info
+# flagging is Gemini vision (see app/services/ai_layer.py).
+Pillow==10.4.0
+
+# Word document automation (live document, autosave, PDF/HTML export)
+pywin32==306
+
+# Screen monitoring
+mss==9.0.1
+opencv-python==4.10.0.84
+
+# Export
+python-docx==1.1.2
+
+# Publishing (SharePoint via Microsoft Graph, Confluence REST API)
+httpx==0.28.1
+msal==1.30.0
+
+# AI layer (single consolidated screenshot analysis call)
+google-genai==1.15.0
+python-dotenv==1.0.1

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f0f7ff;
+  --ink: #021024;
+}
+
+.dark {
+  --bg: #021024;
+  --ink: #e8f4ff;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #7DA0CA55;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5483B3aa;
+}
+
+/* Selection */
+::selection {
+  background: #5483B333;
+  color: #021024;
+}
+
+.dark ::selection {
+  background: #5483B355;
+  color: #fff;
+}
+
+/* Minimal video-scrubber look for the session footer's step slider --
+   thin track, small round thumb, no native OS chrome. */
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+  margin-top: 0;
+}
+.scrubber::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.scrubber::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+}
