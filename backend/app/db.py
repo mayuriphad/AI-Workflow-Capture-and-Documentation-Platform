@@ -152,12 +152,13 @@ def reconcile_stale_recordings() -> int:
     "Recording" badge on a project forever with nothing actually capturing
     it. Returns how many projects were reconciled, for a startup log line."""
     with connect() as conn:
-        cur = conn.execute("UPDATE projects SET status = 'stopped' WHERE status = 'active'")
-        conn.execute(
-            "UPDATE recording_sessions SET status = 'stopped', ended_at = ? WHERE status = 'running'",
-            (time.time(),),
-        )
-        return cur.rowcount
+        stale_project_ids = [r["id"] for r in conn.execute("SELECT id FROM projects WHERE status = 'active'")]
+        stale_session_ids = [r["id"] for r in conn.execute("SELECT id FROM recording_sessions WHERE status = 'running'")]
+    for project_id in stale_project_ids:
+        update_project_status(project_id, "stopped")
+    for session_id in stale_session_ids:
+        stop_session(session_id)
+    return len(stale_project_ids)
 
 
 def update_project_status(project_id: str, status: str) -> None:

@@ -70,6 +70,12 @@ class RecordingSessionManager:
         if self._session_id is not None:
             db.stop_session(self._session_id)
             self._session_id = None
+        if self._project_id is not None:
+            # Also covers the case where start() displaced us to begin a
+            # different project's session -- without this, the displaced
+            # project's status row stays stuck at 'active' since only the
+            # explicit /stop route used to clear it.
+            db.update_project_status(self._project_id, "stopped")
         self._project_id = None
         self._queue = None
 

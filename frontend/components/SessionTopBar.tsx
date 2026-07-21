@@ -244,17 +244,19 @@ export default function SessionTopBar({
             <IconChevronLeft />
             {project.title}
           </button>
-          <button
-            onClick={onToggleRecording}
-            disabled={recordingBusy}
-            title={recording ? "Stop recording this session" : "Resume recording"}
-            className={`flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              recording ? "bg-red-500/15 text-red-300 hover:bg-red-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15"
-            }`}
-          >
-            {recording ? <IconStopSquare /> : <IconRecordDot />}
-            {recordingBusy ? "…" : recording ? "Stop Recording" : "Resume Recording"}
-          </button>
+          {project.status !== "archived" && (
+            <button
+              onClick={onToggleRecording}
+              disabled={recordingBusy}
+              title={recording ? "Stop recording this session" : "Resume recording"}
+              className={`flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                recording ? "bg-red-500/15 text-red-300 hover:bg-red-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15"
+              }`}
+            >
+              {recording ? <IconStopSquare /> : <IconRecordDot />}
+              {recordingBusy ? "…" : recording ? "Stop Recording" : "Resume Recording"}
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-gray-300">

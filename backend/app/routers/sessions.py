@@ -59,6 +59,8 @@ async def resume_session(project_id: str):
     project = db.get_project(project_id)
     if project is None:
         raise HTTPException(404, "Project not found")
+    if project["status"] == "archived":
+        raise HTTPException(409, "This project has already been published and archived; it can't be resumed for recording.")
     await word.open_document(project_id, project["word_file_path"])
     session_id = await session_manager.start(project_id, project["doc_type"])
     db.update_project_status(project_id, "active")
