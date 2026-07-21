@@ -14,7 +14,11 @@ tables, add hyperlinks — while new steps keep appending underneath. Every
 session auto-saves with version history, and a finished SOP exports to
 PDF/DOCX/HTML/Markdown or publishes straight to SharePoint or Confluence.
 
-![FlowDocs AI dashboard](docs/screenshots/dashboard.png)
+![FlowDocs AI dashboard](docs/screenshots/dashboard.jpg)
+*The dashboard: total SOPs, how many are published vs. still drafts, and how many captured steps are waiting on redaction review.*
+
+![Session view while recording](docs/screenshots/session-recording.jpg)
+*A session in progress — the left filmstrip is every screenshot captured so far, the main panel shows the AI-written instruction for the current step, and flagged frames sit in the redaction review queue up top until approved.*
 
 ## Example use case
 

@@ -9,7 +9,7 @@ The dashboard tracks every SOP you've recorded — total stories, how many
 are published vs. still drafts, and how many captured steps are waiting on
 redaction review.
 
-![Dashboard](screenshots/dashboard.png)
+![Dashboard](screenshots/dashboard.jpg)
 
 Clicking **Record New SOP** names the new document and immediately opens it
 in Microsoft Word while FlowDocs AI starts watching the screen.
@@ -30,6 +30,9 @@ If a frame contains something sensitive (an account ID, an email, a
 document reference), it's held out of the document entirely and queued for
 manual redaction review instead of being inserted automatically.
 
+![Session view with a pending redaction review](screenshots/session-recording.jpg)
+*The orange banner lists every captured step still waiting on review; the filmstrip on the left is the full sequence of screenshots taken so far.*
+
 ## 3. Review, redact, and add a voice note
 
 Flagged frames show up as pending review items. The engineer opens each
@@ -44,7 +47,7 @@ As more SOPs get recorded, the story library shows all of them — drafts
 still being worked on, ones actively recording, and ones already
 published — searchable by name and filterable by status.
 
-![Story library](screenshots/story-library.png)
+![Story library](screenshots/story-library.jpg)
 
 ## 5. Stop, polish, and publish
 
