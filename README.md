@@ -1,15 +1,47 @@
-# SOP Recorder
+# FlowDocs AI
 
-Records a live workflow and turns it into a Standard Operating Procedure
-inside a real, live Microsoft Word document: start a session and the app
-opens Word, watches the screen, and inserts an AI-written instruction +
-screenshot for every meaningful action as it happens. Sensitive frames are
-held for redaction review before anything is written. Voice notes attach to
-the step you just did. Since the document is genuinely open in Word the
-whole time, you can keep editing it natively — reorder, add tables,
-hyperlinks, whatever — while new steps keep appending. Auto-saves with
-version history, exports to PDF/DOCX/HTML/Markdown, and can publish
-straight to SharePoint or Confluence.
+Turn a live workflow into a Standard Operating Procedure automatically.
+Start a recording session and FlowDocs AI opens a real Microsoft Word
+document, watches your screen, and writes an instruction + screenshot into
+that document for every meaningful action you take — while you're still
+doing it.
+
+Sensitive frames (passwords, account numbers, personal data) are held back
+for a redaction review before anything is written. Voice notes attach to
+whichever step you just did. Because the document is genuinely open in Word
+the whole time, you can keep editing it natively — reorder sections, add
+tables, add hyperlinks — while new steps keep appending underneath. Every
+session auto-saves with version history, and a finished SOP exports to
+PDF/DOCX/HTML/Markdown or publishes straight to SharePoint or Confluence.
+
+![FlowDocs AI dashboard](docs/screenshots/dashboard.png)
+
+## Example use case
+
+> A support engineer needs to document "how to reset a user's password" so
+> the rest of the team can follow the same steps without asking them
+> directly.
+
+1. They click **Record New SOP**, name it, and FlowDocs AI opens a blank
+   Word document and starts watching the screen.
+2. They perform the reset for real — open the admin console, search the
+   user, click reset, confirm. After each meaningful screen change, an
+   instruction + screenshot appears in the Word doc automatically
+   ("Search for the user by email", "Click Reset Password", ...).
+3. The admin console happens to show the user's email and an account ID on
+   screen — FlowDocs AI flags that frame and holds it in a **redaction
+   review** queue instead of writing it in directly.
+4. The engineer reviews the flagged frame, blacks out the account ID, and
+   approves it — now it's inserted.
+5. They add a quick spoken note ("if the user isn't found, check they're
+   using their work email") — it gets transcribed and attached under the
+   right step.
+6. They stop recording, skim the generated SOP in Word (still just a Word
+   document — they fix a typo directly in Word), and publish it to
+   Confluence for the team.
+
+See [`docs/USE_CASE.md`](docs/USE_CASE.md) for a longer walkthrough with
+screenshots of the story library and session view.
 
 ## Architecture
 

@@ -7,3 +7,5 @@ backend/storage/
 node_modules/
 .next/
 *.tsbuildinfo
+
+.claude/
