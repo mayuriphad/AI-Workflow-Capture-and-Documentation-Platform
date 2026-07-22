@@ -8,6 +8,7 @@ from app.config import SCREENSHOTS_DIR
 from app.schemas import ResolveStepRequest
 from app.services.redaction import apply_redactions
 from app.services.session_guard import ensure_document_open
+from app.services.versioning import maybe_auto_snapshot
 from app.services.word_automation import word
 
 router = APIRouter(prefix="/review", tags=["review"])
@@ -53,6 +54,7 @@ async def approve(step_id: str, payload: ResolveStepRequest):
     bookmark = f"step_{uuid.uuid4().hex[:8]}"
     await word.append_step(step["instruction"], final_path, step_number, bookmark)
     db.resolve_step(step_id, "approved", screenshot_final_path=final_path, word_bookmark=bookmark)
+    await maybe_auto_snapshot(step["project_id"])
     return {"ok": True, "screenshot_final_path": Path(final_path).relative_to(SCREENSHOTS_DIR).as_posix()}
 
 

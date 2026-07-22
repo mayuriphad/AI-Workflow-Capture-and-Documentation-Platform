@@ -15,6 +15,7 @@ class SettingsUpdate(BaseModel):
     capture_settle_sec: float | None = None
     default_doc_type: str | None = None
     theme: str | None = None
+    auto_snapshot_every_n_steps: int | None = None
 
 
 @router.get("")

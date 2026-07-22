@@ -66,23 +66,19 @@ class StepAnalysis:
     redaction_boxes: list[dict] = field(default_factory=list)  # pixel-space {left,top,width,height,label}
 
 
-VISION_INSTRUCTION_TEMPLATE = """You are the AI layer for a screen-recording tool that builds \
+VISION_INSTRUCTION_TEMPLATE = """You are the vision layer for a screen-recording tool that builds \
 a {doc_label} from a user's actions, one screenshot at a time.
 
 For the given screenshot, do all of the following:
-1. Identify the action the user just took or the state being shown (e.g. "Click the Save icon in the top-left toolbar"). \
-Write ONE clear, concise instruction in imperative voice describing this action. Be specific about \
-exact button/menu/field names visible. If the action is unclear, leave it empty.
-2. Read all visible on-screen text.
-3. Identify the UI components visible (buttons, menus, forms, tables, dialogs, fields, links) \
+1. Read all visible on-screen text.
+2. Identify the UI components visible (buttons, menus, forms, tables, dialogs, fields, links) \
 with their labels exactly as shown.
-4. Detect any sensitive information visible: ID/passport numbers, credit card numbers, API keys \
+3. Detect any sensitive information visible: ID/passport numbers, credit card numbers, API keys \
 or passwords, private emails or phone numbers, or any visible face/photo ID. Do not repeat or \
 transcribe the sensitive value itself anywhere in your output.
 
 Return ONLY a JSON object (no markdown fences, no other text) with this exact shape:
 {{
-  "instruction": "<the one SOP instruction, or an empty string>",
   "on_screen_text": "<all visible text, concatenated>",
   "ui_elements": [{{"type": "button|menu|form|table|dialog|field|link", "label": "<exact label>"}}],
   "has_sensitive_info": true|false,
@@ -92,6 +88,25 @@ Return ONLY a JSON object (no markdown fences, no other text) with this exact sh
 "box_2d" coordinates are integers normalized to a 0-1000 scale relative to the image's height and \
 width respectively. If nothing sensitive is visible, "redaction_boxes" must be an empty array and \
 "has_sensitive_info" must be false."""
+
+INSTRUCTION_WRITING_TEMPLATE = """You are the AI layer for a screen-recording tool that builds a \
+{doc_label} from a user's actions. A vision model already read the current screenshot; you never \
+see the image itself, only what it extracted below.
+
+Identify the action the user just took or the state being shown (e.g. "Click the Save icon in the \
+top-left toolbar") and write ONE clear, concise instruction in imperative voice describing it. Be \
+specific about exact button/menu/field names from the elements below. If there isn't enough \
+information to confidently describe an action, return an empty string rather than guessing.
+
+Visible UI elements:
+{ui_elements_list}
+
+On-screen text:
+{on_screen_text}
+
+Return ONLY a JSON object (no markdown fences, no other text): \
+{{"instruction": "<the instruction, or an empty string>"}}"""
+
 
 def _extract_vision_data(image_path: str, doc_type: str = "sop") -> dict:
     response = _get_client().models.generate_content(
@@ -111,6 +126,37 @@ def _extract_vision_data(image_path: str, doc_type: str = "sop") -> dict:
         return {}
 
 
+def _write_instruction(on_screen_text: str, ui_elements: list["UIElement"], doc_type: str = "sop") -> str:
+    """Second, text-only Gemini call (GEMINI_TEXT_MODEL): writes the SOP
+    instruction purely from what the vision pass already extracted, so this
+    draws from a separate model/quota bucket instead of competing with the
+    vision call's own."""
+    if not on_screen_text and not ui_elements:
+        return ""
+
+    ui_elements_list = (
+        "\n".join(f"- ({el.type}) {el.label}" for el in ui_elements if el.label) or "(none detected)"
+    )
+    response = _get_client().models.generate_content(
+        model=GEMINI_TEXT_MODEL,
+        contents=["Write the instruction for this screenshot."],
+        config=types.GenerateContentConfig(
+            system_instruction=INSTRUCTION_WRITING_TEMPLATE.format(
+                doc_label=DOC_TYPE_LABELS.get(doc_type, "procedure document"),
+                ui_elements_list=ui_elements_list,
+                on_screen_text=on_screen_text or "(none detected)",
+            ),
+            temperature=0.2,
+            response_mime_type="application/json",
+        ),
+    )
+    try:
+        data = json.loads(response.text or "{}")
+    except json.JSONDecodeError:
+        return ""
+    return (data.get("instruction") or "").strip()
+
+
 def analyze_screenshot(image_path: str, doc_type: str = "sop") -> StepAnalysis:
     with Image.open(image_path) as img:
         width, height = img.size
@@ -123,8 +169,8 @@ def analyze_screenshot(image_path: str, doc_type: str = "sop") -> StepAnalysis:
         if isinstance(el, dict)
     ]
     on_screen_text = (vision_data.get("on_screen_text") or "").strip()
-    instruction = (vision_data.get("instruction") or "").strip()
     redaction_boxes = _normalize_boxes(vision_data.get("redaction_boxes", []), width, height)
+    instruction = _write_instruction(on_screen_text, ui_elements, doc_type)
 
     return StepAnalysis(
         instruction=instruction,

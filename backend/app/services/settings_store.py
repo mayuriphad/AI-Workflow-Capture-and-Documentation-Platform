@@ -25,6 +25,9 @@ DEFAULTS = {
     "capture_settle_sec": CAPTURE_SETTLE_SEC,
     "default_doc_type": "sop",
     "theme": "light",
+    # 0 disables auto-snapshotting; otherwise a version snapshot is taken
+    # automatically every N steps inserted into the live document.
+    "auto_snapshot_every_n_steps": 5,
 }
 
 _lock = Lock()

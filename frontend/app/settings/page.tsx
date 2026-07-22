@@ -136,6 +136,25 @@ export default function SettingsPage() {
           </Field>
         </Section>
 
+        <Section title="Version history">
+          <Field
+            label="Auto-snapshot every"
+            hint="Automatically saves a version snapshot after this many steps are inserted. Set to 0 to disable and only snapshot manually."
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                step={1}
+                defaultValue={settings.auto_snapshot_every_n_steps}
+                onBlur={(e) => save({ auto_snapshot_every_n_steps: Math.max(0, Number(e.target.value)) })}
+                className="w-28 rounded border border-line px-2 py-1.5 text-sm"
+              />
+              <span className="text-sm text-[#021024]/50 dark:text-white/50">steps</span>
+            </div>
+          </Field>
+        </Section>
+
         <Section title="Diagnostics (read-only)">
           <Field label="Gemini Vision">
             {diagnostics ? (

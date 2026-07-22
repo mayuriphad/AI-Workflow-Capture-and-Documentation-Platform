@@ -110,6 +110,7 @@ export interface AppSettings {
   capture_settle_sec: number;
   default_doc_type: string;
   theme: "light" | "dark";
+  auto_snapshot_every_n_steps: number;
 }
 
 export interface SettingsDiagnostics {

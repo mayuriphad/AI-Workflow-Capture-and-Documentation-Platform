@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app import db
 from app.config import VERSIONS_DIR
+from app.services.settings_store import get_settings
 from app.services.word_automation import word
 
 
@@ -31,6 +32,19 @@ async def snapshot(project_id: str, label: str = "auto") -> dict:
 
 def list_versions(project_id: str) -> list[dict]:
     return db.list_versions(project_id)
+
+
+async def maybe_auto_snapshot(project_id: str) -> None:
+    """Called after each step insertion -- takes an automatic version
+    snapshot every N inserted steps (N from settings, 0 disables it), so
+    version history exists without the user having to remember to click
+    'create snapshot'."""
+    every_n = get_settings().get("auto_snapshot_every_n_steps") or 0
+    if every_n <= 0:
+        return
+    inserted = db.count_inserted_steps(project_id)
+    if inserted and inserted % every_n == 0:
+        await snapshot(project_id, label="auto")
 
 
 async def restore(project_id: str, version_id: str) -> str:

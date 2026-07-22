@@ -69,7 +69,9 @@ is a control panel, not the editing surface.
     frame → analysis → auto-insert into the live Word doc, or queue for
     redaction review if flagged sensitive.
   - `services/versioning.py` — filesystem snapshots of the `.docx` per
-    project, with restore.
+    project, with restore. Snapshots also fire automatically every N
+    inserted steps (configurable in Settings, default 5; 0 disables it),
+    on top of manual "create snapshot".
   - `services/export_service.py` — DOCX is a file copy, PDF/HTML go through
     Word's own exporter, Markdown walks the `.docx` with `python-docx`.
   - `services/publishers/` — pluggable publish targets. SharePoint (Graph
@@ -107,12 +109,20 @@ uvicorn app.main:app --reload --port 8000
 ```
 GEMINI_API_KEY=...
 GEMINI_VISION_MODEL=gemini-flash-lite-latest   # optional, this is the default -- OCR/UI-detection pass
-GEMINI_TEXT_MODEL=gemini-3-flash-preview       # optional, this is the default -- instruction-writing pass
+GEMINI_TEXT_MODEL=gemini-flash-lite-latest      # optional, this is the default -- instruction-writing pass
 ```
-Split into two models so the two Gemini calls made per captured screenshot draw from separate
-free-tier quota buckets instead of both competing for the same one (see
-`services/ai_layer.py`). Model availability and quota vary per API key/account and change over
-time -- if either default 404s or 429s for your key, list what's actually usable with:
+The design intent (see `services/ai_layer.py`) is to route the two Gemini calls made per captured
+screenshot to *separate* models/quota buckets so neither call starves the other. In practice, which
+models actually carry free-tier quota varies per API key/account and shifts over time -- on the key
+this was last verified against, `gemini-3-flash-preview` and `gemini-2.0-flash` both came back with
+zero or exhausted free-tier quota (`429 RESOURCE_EXHAUSTED`), so both env vars are pinned to the one
+model that reliably worked, `gemini-flash-lite-latest`, meaning both calls currently share one quota
+bucket. If your key has real quota (or billing) on a second model, split them back apart for the
+originally-intended isolation. Avoid `-latest` aliases if you're troubleshooting quota, though --
+they can roll onto a different underlying model with a much smaller free-tier allowance without
+warning (this is exactly what happened testing `gemini-flash-latest`, which silently pointed at a
+model with a 20-requests/day cap). List what's actually usable -- and, ideally, check
+https://ai.dev/rate-limit for actual remaining quota -- with:
 ```bash
 python -c "from google import genai; import os; from dotenv import load_dotenv; load_dotenv('.env'); \
 [print(m.name) for m in genai.Client(api_key=os.environ['GEMINI_API_KEY']).models.list()]"

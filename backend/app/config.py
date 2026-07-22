@@ -41,7 +41,7 @@ WHISPER_COMPUTE_TYPE = "int8"
 #      used for voice-note key-point extraction.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_VISION_MODEL = os.environ.get("GEMINI_VISION_MODEL", "gemini-flash-lite-latest")
-GEMINI_TEXT_MODEL = os.environ.get("GEMINI_TEXT_MODEL", "gemini-3-flash-preview")
+GEMINI_TEXT_MODEL = os.environ.get("GEMINI_TEXT_MODEL", "gemini-flash-lite-latest")
 
 # Screen monitoring (OpenCV frame-diffing). Two thresholds: MOTION_RATIO
 # (tiny, frame-to-frame) decides "is the screen still actively changing right

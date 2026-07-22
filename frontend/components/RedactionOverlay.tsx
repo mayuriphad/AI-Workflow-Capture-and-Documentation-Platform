@@ -25,8 +25,10 @@ export default function RedactionOverlay({ stepId, onDone, onReject, onClose }: 
   const [drawing, setDrawing] = useState<{ x: number; y: number } | null>(null);
   const [mode, setMode] = useState<"blackbox" | "blur">("blackbox");
   const [busy, setBusy] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
+    setImgLoaded(false);
     api.getReviewSuggestions(stepId).then((res) => {
       setScreenshot(res.screenshot);
       setBoxes(res.suggestions);
@@ -108,11 +110,12 @@ export default function RedactionOverlay({ stepId, onDone, onReject, onClose }: 
               src={api.screenshotUrl(screenshot)}
               alt="Captured frame"
               className="max-w-full rounded border border-line"
+              onLoad={() => setImgLoaded(true)}
             />
-            {boxes.map((box, idx) => {
+            {imgLoaded && boxes.map((box, idx) => {
               const img = imgRef.current;
-              const scaleX = img ? img.getBoundingClientRect().width / img.naturalWidth : 1;
-              const scaleY = img ? img.getBoundingClientRect().height / img.naturalHeight : 1;
+              const scaleX = img && img.naturalWidth ? img.getBoundingClientRect().width / img.naturalWidth : 1;
+              const scaleY = img && img.naturalHeight ? img.getBoundingClientRect().height / img.naturalHeight : 1;
               return (
                 <div
                   key={idx}

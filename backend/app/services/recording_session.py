@@ -17,6 +17,7 @@ from app.config import SCREENSHOTS_DIR
 from app.services import ai_layer
 from app.services.screen_monitor import ScreenMonitor
 from app.services.settings_store import get_settings
+from app.services.versioning import maybe_auto_snapshot
 from app.services.word_automation import word
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,7 @@ class RecordingSessionManager:
             review_status="auto_inserted",
             word_bookmark=bookmark,
         )
+        await maybe_auto_snapshot(project_id)
 
 
 session_manager = RecordingSessionManager()
